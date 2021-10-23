@@ -7,7 +7,7 @@
     "start": "backpack"
   },
   "keywords": [],
-  "author": "ilazar",
+  "author": "rares",
   "license": "",
   "dependencies": {
     "backpack-core": "^0.8.4",
@@ -16,6 +16,6 @@
     "koa-convert": "^1.2.0",
     "koa-cors": "^0.0.16",
     "koa-router": "^7.4.0",
-    "ws": "^7.1.2"
+    "ws": "^7.5.5"
   }
 }

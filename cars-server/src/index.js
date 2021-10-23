@@ -10,128 +10,161 @@ const bodyparser = require('koa-bodyparser');
 app.use(bodyparser());
 app.use(cors());
 app.use(async (ctx, next) => {
-  const start = new Date();
-  await next();
-  const ms = new Date() - start;
-  console.log(`${ctx.method} ${ctx.url} ${ctx.response.status} - ${ms}ms`);
-});
-
-app.use(async (ctx, next) => {
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  await next();
-});
-
-app.use(async (ctx, next) => {
-  try {
+    const start = new Date();
     await next();
-  } catch (err) {
-    ctx.response.body = {issue: [{error: err.message || 'Unexpected error'}]};
-    ctx.response.status = 500;
-  }
+    const ms = new Date() - start;
+    console.log(`${ctx.method} ${ctx.url} ${ctx.response.status} - ${ms}ms`);
+});
+
+app.use(async (ctx, next) => {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    await next();
+});
+
+app.use(async (ctx, next) => {
+    try {
+        await next();
+    } catch (err) {
+        ctx.response.body = {issue: [{error: err.message || 'Unexpected error'}]};
+        ctx.response.status = 500;
+    }
 });
 
 class Car {
-  constructor({id, company, model, dateAdded, isNew}) {
-    this.id = id;
-    this.company = company;
-    this.model = model;
-    this.dateAdded = dateAdded;
-    this.isNew = isNew;
-  }
+    constructor({id, model, price, date, available}) {
+        this.id = id;
+        this.model = model;
+        this.price = price;
+        this.date = date;
+        this.available = available;
+    }
 }
 
 const cars = [];
 for (let i = 0; i < 3; i++) {
-  cars.push(new Car({id: `${i}`, company: `company ${i}`, model: i, dateAdded: new Date(Date.now() + i), isNew: i%2 === 0}));
+    cars.push(new Car({
+        id: `${i}`,
+        model: `car ${i}`,
+        price: 100,
+        date: new Date(Date.now() + i),
+        available: true
+    }));
 }
 let lastUpdated = cars[cars.length - 1].date;
 let lastId = cars[cars.length - 1].id;
+const pageSize = 10;
 
 const broadcast = data =>
     wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data));
-      }
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(data));
+        }
     });
 
 const router = new Router();
 
 router.get('/car', ctx => {
-  const ifModifiedSince = ctx.request.get('If-Modified-Since');
-  if (ifModifiedSince && new Date(ifModifiedSince).getTime() >= lastUpdated.getTime() - lastUpdated.getMilliseconds()) {
-    ctx.response.status = 304; // NOT MODIFIED
-    return;
-  }
-  ctx.response.set('Last-Modified', lastUpdated.toUTCString());
-  ctx.response.body = cars;
-  ctx.response.status = 200;
+    const ifModifiedSince = ctx.request.get('If-Modified-Since');
+    if (ifModifiedSince && new Date(ifModifiedSince).getTime() >= lastUpdated.getTime() - lastUpdated.getMilliseconds()) {
+        ctx.response.status = 304; // NOT MODIFIED
+        return;
+    }
+    const model = ctx.request.query.model;
+    const page = parseInt(ctx.request.query.page) || 1;
+    ctx.response.set('Last-Modified', lastUpdated.toUTCString());
+    const sortedCars = cars
+        .filter(car => model ? car.model.indexOf(model) !== -1 : true)
+        .sort((n1, n2) => -(n1.date.getTime() - n2.date.getTime()));
+    const offset = (page - 1) * pageSize;
+    // ctx.response.body = {
+    //   page,
+    //   stocks: sortedStocks.slice(offset, offset + pageSize),
+    //   more: offset + pageSize < sortedStocks.length
+    // };
+    ctx.response.body = cars;
+    ctx.response.status = 200;
 });
 
-router.get('/meal/:id', async (ctx) => {
-  const mealId = ctx.request.params.id;
-  const meal = cars.find(meal => mealId === meal.id);
-  if (meal) {
-    ctx.response.body = meal;
-    ctx.response.status = 200; // ok
-  } else {
-    ctx.response.body = {issue: [{warning: `meal with id ${mealId} not found`}]};
-    ctx.response.status = 404; // NOT FOUND (if you know the resource was deleted, then return 410 GONE)
-  }
+router.get('/car/:id', async (ctx) => {
+    const carId = ctx.request.params.id;
+    const car = cars.find(c => carId === c.id);
+    if (car) {
+        ctx.response.body = car;
+        ctx.response.status = 200; // ok
+    } else {
+        ctx.response.body = {issue: [{warning: `car with id ${carId} not found`}]};
+        ctx.response.status = 404; // NOT FOUND (if you know the resource was deleted, then return 410 GONE)
+    }
 });
 
-const createMeal = async (ctx) => {
-  const meal = ctx.request.body;
-  if (!meal.name) { // validation
-    ctx.response.body = {issue: [{error: 'Text is missing'}]};
-    ctx.response.status = 400; //  BAD REQUEST
-    return;
-  }
-  meal.id = `${parseInt(lastId) + 1}`;
-  lastId = meal.id;
-  cars.push(meal);
-  ctx.response.body = meal;
-  ctx.response.status = 201; // CREATED
-  broadcast({event: 'created', payload: {meal: meal}});
+const createCar = async (ctx) => {
+    const car = ctx.request.body;
+    if (!car.model) { // validation
+        ctx.response.body = {issue: [{error: 'Name is missing'}]};
+        ctx.response.status = 400; //  BAD REQUEST
+        return;
+    }
+    car.id = `${parseInt(lastId) + 1}`;
+    lastId = car.id;
+    car.date = new Date();
+    car.available = true;
+    cars.push(car);
+    ctx.response.body = car;
+    ctx.response.status = 201; // CREATED
+    broadcast({event: 'created', payload: {car: car}});
 };
 
-router.post('/meal', async (ctx) => {
-  await createMeal(ctx);
+router.post('/car', async (ctx) => {
+    await createCar(ctx);
 });
 
-router.put('/meal/:id', async (ctx) => {
-  const id = ctx.params.id;
-  const meal = ctx.request.body;
-  const mealId = meal.id;
-  if (mealId && id !== meal.id) {
-    ctx.response.body = {issue: [{error: `Param id and body id should be the same`}]};
-    ctx.response.status = 400; // BAD REQUEST
-    return;
-  }
-  if (!mealId) {
-    await createMeal(ctx);
-    return;
-  }
-  const index = cars.findIndex(meal => meal.id === id);
-  if (index === -1) {
-    ctx.response.body = {issue: [{error: `meal with id ${id} not found`}]};
-    ctx.response.status = 400; // BAD REQUEST
-    return;
-  }
-  cars[index] = meal;
-  lastUpdated = new Date();
-  ctx.response.body = meal;
-  ctx.response.status = 200; // OK
-  broadcast({event: 'updated', payload: {meal: meal}});
+router.put('/car/:id', async (ctx) => {
+    const id = ctx.params.id;
+    const car = ctx.request.body;
+    car.date = new Date();
+    const carId = car.id;
+    if (carId && id !== car.id) {
+        ctx.response.body = {issue: [{error: `Param id and body id should be the same`}]};
+        ctx.response.status = 400; // BAD REQUEST
+        return;
+    }
+    if (!carId) {
+        await createCar(ctx);
+        return;
+    }
+    const index = cars.findIndex(car => car.id === id);
+    if (index === -1) {
+        ctx.response.body = {issue: [{error: `car with id ${id} not found`}]};
+        ctx.response.status = 400; // BAD REQUEST
+        return;
+    }
+    cars[index] = car;
+    lastUpdated = new Date();
+    ctx.response.body = car;
+    ctx.response.status = 200; // OK
+    broadcast({event: 'updated', payload: {car: car}});
+});
+
+router.del('/car/:id', ctx => {
+    const id = ctx.params.id;
+    const index = cars.findIndex(car => id === car.id);
+    if (index !== -1) {
+        const car = cars[index];
+        cars.splice(index, 1);
+        lastUpdated = new Date();
+        broadcast({event: 'deleted', payload: {car: car}});
+    }
+    ctx.response.status = 204; // no content
 });
 
 setInterval(() => {
-  lastUpdated = new Date();
-  lastId = `${parseInt(lastId) + 1}`;
-  const car = new Car({id: lastId, company: `company ${lastId}`, model: `model ${lastId}`, dateAdded: lastUpdated, isNew: lastId%2 === 0});
-  cars.push(car);
-  console.log(`${car.company}`);
-  broadcast({event: 'created', payload: {car: car}});
-}, 30000);
+    lastUpdated = new Date();
+    lastId = `${parseInt(lastId) + 1}`;
+    const car = new Car({id: lastId, model: `car ${lastId}`, price: 100, date: lastUpdated, available: true});
+    cars.push(car);
+    console.log(`${car.model}`);
+    broadcast({event: 'created', payload: {car}});
+}, 150000);
 
 app.use(router.routes());
 app.use(router.allowedMethods());
