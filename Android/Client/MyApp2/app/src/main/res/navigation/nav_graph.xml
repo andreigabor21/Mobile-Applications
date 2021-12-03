@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/CarListFragment">
+
+    <fragment
+        android:id="@+id/FragmentLogin"
+        android:name="com.ilazar.myapp2.auth.login.LoginFragment"
+        android:label="@string/login"
+        tools:layout="@layout/fragment_login" />
+
+    <fragment
+        android:id="@+id/CarListFragment"
+        android:name="com.ilazar.myapp2.todo.cars.CarListFragment"
+        android:label="@string/car_list_fragment_label"
+        tools:layout="@layout/fragment_car_list">
+
+        <action
+            android:id="@+id/action_CarListFragment_to_CarEditFragment"
+            app:destination="@id/CarEditFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/CarEditFragment"
+        android:name="com.ilazar.myapp2.todo.car.CarEditFragment"
+        android:label="@string/car_edit_fragment_label"
+        tools:layout="@layout/fragment_car_edit">
+
+        <action
+            android:id="@+id/action_CarEditFragment_to_CarListFragment"
+            app:destination="@id/CarListFragment" />
+    </fragment>
+</navigation>
