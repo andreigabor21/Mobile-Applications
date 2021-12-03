@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/FragmentLogin"
-        android:name="com.ilazar.myapp2.auth.login.LoginFragment"
+        android:name="com.ubb.cars.auth.login.LoginFragment"
         android:label="@string/login"
         tools:layout="@layout/fragment_login" />
 

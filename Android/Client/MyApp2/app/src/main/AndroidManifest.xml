@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.ilazar.myapp2" >
+    package="com.ubb.cars" >
 
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -15,7 +15,7 @@
         android:theme="@style/Theme.MyApp2"
         tools:ignore="UnusedAttribute">
         <activity
-            android:name=".MainActivity"
+            android:name="com.ubb.cars.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyApp2.NoActionBar" >
