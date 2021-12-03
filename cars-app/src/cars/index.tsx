@@ -1,2 +1,1 @@
-export { default as StockList } from './CarList';
-export { default as StockEdit } from './CarEdit';
+export { default as CarList } from './CarList';
